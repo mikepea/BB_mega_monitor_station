@@ -24,6 +24,62 @@ DeviceAddress therms[MAX_DEVS];
 
 int num_devices = 0;
 
+//-----------------------------------------------------------------------------
+
+// function to print a device address
+void printAddress(DeviceAddress deviceAddress)
+{
+  for (uint8_t i = 0; i < 8; i++)
+  {
+    if (deviceAddress[i] < 16) Serial.print("0");
+    Serial.print(deviceAddress[i], HEX);
+  }
+}
+
+void discover_onewire_devs(int n) {
+
+    // Method 1:
+    // search for devices on the bus and assign based on an index.  ideally,
+    // you would do this to initially discover addresses on the bus and then 
+    // use those addresses and manually assign them (see above) once you know 
+    // the devices on your bus (and assuming they don't change).
+
+    for (int i=0; i<n; i++) {
+        if (!sensors.getAddress(therms[i], i)) {
+            Serial.print("Unable to find address for Device "); 
+            Serial.print(i, DEC); 
+            Serial.println(); 
+        } else {
+            Serial.print("Device Address: ");
+            printAddress(therms[i]);
+            Serial.println();
+        }
+    }
+
+}
+
+// function to print the temperature for a device
+void printTemperature(DeviceAddress deviceAddress)
+{
+  // method 2 - faster
+  float tempC = sensors.getTempC(deviceAddress);
+  Serial.print("Temp C: ");
+  Serial.print(tempC);
+  Serial.println();
+}
+
+
+void print_ldr_analog_value() {
+
+  int ldr = analogRead(LDR_ANALOG_PIN);
+  Serial.print("Analog LDR value: ");
+  Serial.print(ldr);
+  Serial.println();
+
+}
+
+//-----------------------------------------------------------------------------
+
 void setup() {
   
     pinMode(DOOR_BELL_PIN, INPUT);
@@ -85,54 +141,3 @@ void loop() {
 
 // ---------------------------------------------------------------------------
 
-// function to print a device address
-void printAddress(DeviceAddress deviceAddress)
-{
-  for (uint8_t i = 0; i < 8; i++)
-  {
-    if (deviceAddress[i] < 16) Serial.print("0");
-    Serial.print(deviceAddress[i], HEX);
-  }
-}
-
-void discover_onewire_devs(int n) {
-
-    // Method 1:
-    // search for devices on the bus and assign based on an index.  ideally,
-    // you would do this to initially discover addresses on the bus and then 
-    // use those addresses and manually assign them (see above) once you know 
-    // the devices on your bus (and assuming they don't change).
-
-    for (int i=0; i<n; i++) {
-        if (!sensors.getAddress(therms[i], i)) {
-            Serial.print("Unable to find address for Device "); 
-            Serial.print(i, DEC); 
-            Serial.println(); 
-        } else {
-            Serial.print("Device Address: ");
-            printAddress(therms[i]);
-            Serial.println();
-        }
-    }
-
-}
-
-// function to print the temperature for a device
-void printTemperature(DeviceAddress deviceAddress)
-{
-  // method 2 - faster
-  float tempC = sensors.getTempC(deviceAddress);
-  Serial.print("Temp C: ");
-  Serial.print(tempC);
-  Serial.println();
-}
-
-
-void print_ldr_analog_value() {
-
-  int ldr = analogRead(LDR_ANALOG_PIN);
-  Serial.print("Analog LDR value: ");
-  Serial.print(ldr);
-  Serial.println();
-
-}
