@@ -1,5 +1,52 @@
 #!/usr/bin/env ruby
-#require 'rubygems'
+
+require 'socket'
 require 'serialport'
-sp = SerialPort.new "/dev/ttyUSB0", 9600
-puts sp.read   # hopefully "OK" ;-)
+
+@graphite_port = 2003
+@graphite_host = "127.0.0.1"
+
+port_str = "/dev/ttyUSB0"
+baud_rate = 9600
+data_bits = 8
+stop_bits = 1
+parity = SerialPort::NONE
+
+sp = SerialPort.new(port_str, baud_rate, data_bits, stop_bits, parity)
+
+buffer = ''
+
+def seconds_since_epoch
+  Time.now.strftime('%s')
+end
+
+def graphite_send(key, val)
+  sock = TCPSocket.new( @graphite_host, @graphite_port )  
+  sock.puts("#{key} #{val} #{seconds_since_epoch}")
+  sock.close
+end
+
+def process_arduino_output(b) 
+	if ( b =~ /^Temperature for Device 1 is: ([0-9\.]+)/ )
+	  graphite_send('bb.megaboard.temperature_degc',  $1)
+	elsif ( b =~ /^Temperature for Device 2 is: ([0-9\.]+)/ )
+	  graphite_send('bb.laser.water.temperature_degc',  $1)
+	elsif ( b =~ /^Analog LDR value: ([0-9]+)/ )
+	  graphite_send('bb.megaboard.ldr',  $1)
+	end
+end
+
+#just read forever
+while true do
+  c = sp.getc
+  if ( c == 10 ) then
+    # gots newline
+  	process_arduino_output(buffer)
+	buffer = ''
+  else 
+  	buffer << c
+  end
+
+end
+
+sp.close       
