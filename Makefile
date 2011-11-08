@@ -11,3 +11,5 @@ ARDUINO_LIBS = OneWire DallasTemperature
 
 include /opt/arduino-mk/Arduino.mk
 
+install:
+	install -o root -g root -m 0555 read_n_graphite /usr/local/bin/

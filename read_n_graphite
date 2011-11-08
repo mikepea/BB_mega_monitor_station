@@ -12,6 +12,8 @@ data_bits = 8
 stop_bits = 1
 parity = SerialPort::NONE
 
+@OPEN_STATE_FILE = "/var/tmp/hackspace_open_state"
+
 sp = SerialPort.new(port_str, baud_rate, data_bits, stop_bits, parity)
 
 buffer = ''
@@ -21,9 +23,14 @@ def seconds_since_epoch
 end
 
 def graphite_send(key, val)
-  sock = TCPSocket.new( @graphite_host, @graphite_port )  
-  sock.puts("#{key} #{val} #{seconds_since_epoch}")
-  sock.close
+  begin 
+    sock = TCPSocket.new( @graphite_host, @graphite_port )  
+    sock.puts("#{key} #{val} #{seconds_since_epoch}")
+    sock.close
+    puts "Sent: #{key} #{val}"
+  rescue
+    puts "Sending to graphite failed :("
+  end
 end
 
 def process_arduino_output(b) 
@@ -33,6 +40,16 @@ def process_arduino_output(b)
 	  graphite_send('bb.laser.water.temperature_degc',  $1)
 	elsif ( b =~ /^Analog LDR value: ([0-9]+)/ )
 	  graphite_send('bb.megaboard.ldr',  $1)
+	elsif ( b =~ /^Hackspace open state: ([0-1])/ )
+	  graphite_send('bb.hackspace.open_state',  $1)
+	  state = $1 ? 'open' : 'closed'
+	  hackspace_open_state(state)
+	end
+end
+
+def hackspace_open_state(state) 
+	File.open(@OPEN_STATE_FILE, 'w') do |file|
+		file.puts("#{state}\n")
 	end
 end
 
