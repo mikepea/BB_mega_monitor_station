@@ -5,6 +5,8 @@ require 'serialport'
 
 @graphite_port = 2003
 @graphite_host = "127.0.0.1"
+@irccat_port = 12345
+@irccat_host = "127.0.0.1"
 
 port_str = "/dev/ttyUSB0"
 baud_rate = 9600
@@ -33,6 +35,17 @@ def graphite_send(key, val)
   end
 end
 
+def irccat_send(msg)
+  begin 
+    sock = TCPSocket.new( @irccat_host, @irccat_port )  
+    sock.puts("#{msg}\n")
+    sock.close
+    puts "irccat: #{msg}"
+  rescue
+    puts "Sending to irccat failed :("
+  end
+end
+
 def process_arduino_output(b) 
 	if ( b =~ /^Temperature for Device 1 is: ([0-9\.]+)/ )
 	  graphite_send('bb.megaboard.temperature_degc',  $1)
@@ -42,15 +55,19 @@ def process_arduino_output(b)
 	  graphite_send('bb.megaboard.ldr',  $1)
 	elsif ( b =~ /^Hackspace open state: ([0-1])/ )
 	  graphite_send('bb.hackspace.open_state',  $1)
-	  state = $1 ? 'open' : 'closed'
-	  hackspace_open_state(state)
+	  hackspace_open_state($1.to_i)
 	end
 end
 
 def hackspace_open_state(state) 
-	File.open(@OPEN_STATE_FILE, 'w') do |file|
-		file.puts("#{state}\n")
-	end
+	val = IO.read(@OPEN_STATE_FILE)
+	puts "state: #{val}"
+	if ( val != "#{state}\n" ) then
+		File.open(@OPEN_STATE_FILE, 'w') do |file|
+	        file.puts("#{state}\n")
+        end
+		irccat_send("Hackspace is now #{(state == 0 ) ? 'closed' : 'open'}")
+    end
 end
 
 #just read forever
