@@ -7,6 +7,9 @@
 #define HACKSPACE_OPEN_SWITCH 4
 #define HACKSPACE_OPEN_DISPLAY 5
 
+const int pinDoorLock = 24;
+const int pinDoorOwl = 23;
+
 #define LDR_ANALOG_PIN 0
 
 #define MAX_DEVS 10
@@ -25,6 +28,21 @@ DallasTemperature sensors(&oneWire);
 DeviceAddress therms[MAX_DEVS];
 
 int num_devices = 0;
+
+//-----------------------------------------------------------------------------
+
+#include <LiquidCrystal.h>
+
+// LiquidCrystal display with:
+// rs on pin 6
+// rw on pin 7
+// enable on pin 8
+// d4, d5, d6, d7 on pins 9, 10, 11, 12
+LiquidCrystal lcd(6, 7, 8, 9, 10, 11, 12);
+int ledPin = 13;		    // LED connected to digital pin 13
+int recvPin=0;
+int wait=1000;
+int val=0;
 
 //-----------------------------------------------------------------------------
 
@@ -106,7 +124,11 @@ void setup() {
     pinMode(HACKSPACE_OPEN_SWITCH, INPUT);
     pinMode(HACKSPACE_OPEN_DISPLAY, OUTPUT);
 
+    pinMode(pinDoorLock, OUTPUT);
+
     Serial.begin(9600);
+
+    lcd.print("  Hello!");
 
     // locate devices on the bus
     Serial.print("Locating devices...");
@@ -133,40 +155,48 @@ void setup() {
 
 }
 
-int val = 0;
+int val_door = 0;
+long loop_count = 0;
 
 void loop() {
-    val = digitalRead(DOOR_BELL_PIN);
-    if ( val ) {
+
+    val_door = digitalRead(DOOR_BELL_PIN);
+    if ( val_door ) {
         Serial.println("*** Ring Ring! ***");
-        val = 0;
+        val_door = 0;
     }
 
-    // call sensors.requestTemperatures() to issue a global temperature
-    // request to all devices on the bus
-    sensors.requestTemperatures(); // Send the command to get temperatures
-    for (int i=0; i<num_devices; i++) {
-        Serial.print("Temperature for Device ");
-        Serial.print(i+1, DEC);
-        Serial.print(" is: ");
-        Serial.print(sensors.getTempCByIndex(i));
-        Serial.println();
-    }
-    //printTemperature(insideThermometer);
+	if ( loop_count % 100 == 0 ) {
+		// call sensors.requestTemperatures() to issue a global temperature
+		// request to all devices on the bus
+		sensors.requestTemperatures(); // Send the command to get temperatures
+		for (int i=0; i<num_devices; i++) {
+			Serial.print("Temperature for Device ");
+			Serial.print(i+1, DEC);
+			Serial.print(" is: ");
+			Serial.print(sensors.getTempCByIndex(i));
+			Serial.println();
+		}
+        print_ldr_analog_value();
+        Serial.println("----------------------");
 
-	if ( is_hackspace_open() ) {
-        Serial.println("Hackspace open state: 1");
-		display_hackspace_open_state(1);
-	} else {
-        Serial.println("Hackspace open state: 0");
-		display_hackspace_open_state(0);
+		if ( is_hackspace_open() ) {
+			Serial.println("Hackspace open state: 1");
+			display_hackspace_open_state(1);
+	    } else {
+			Serial.println("Hackspace open state: 0");
+			display_hackspace_open_state(0);
+		}
 	}
 
-    //
-    print_ldr_analog_value();
+	if ( loop_count % 100 == 0 ) {
+	   digitalWrite(pinDoorLock, HIGH);
+	} else if ( loop_count % 100 == 500 ) {
+	   digitalWrite(pinDoorLock, LOW);
+	}
 
-    Serial.println("----------------------");
-    delay(5000);
+	loop_count++;
+    delay(10);
 }
 
 // ---------------------------------------------------------------------------
